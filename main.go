@@ -12,10 +12,17 @@ import (
 	"unicode"
 )
 
-var client = new(http.Client)
+var (
+	client = new(http.Client)
+	conf   *moon.Doc
+)
 
 func httpHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("from:", r.RemoteAddr)
+	if err := freezeRequest(r); err != nil {
+		fmt.Printf("error freezing request: %s\n", err)
+		return
+	}
 	b, err := httputil.DumpRequest(r, true)
 	if err != nil {
 		fmt.Printf("error dumping request: %s\n", err)
@@ -23,6 +30,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	os.Stdout.Write(b)
 
+	requestURI := r.RequestURI
 	r.RequestURI = ""
 	r.URL.Scheme = strings.Map(unicode.ToLower, r.URL.Scheme)
 
@@ -44,6 +52,12 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	if _, err := io.Copy(w, res.Body); err != nil {
 		fmt.Printf("error copying body: %s\n", err)
 	}
+
+	if requestHistory == nil {
+		requestHistory = make([]http.Request, 0, 100)
+	}
+	r.RequestURI = requestURI
+	requestHistory = append(requestHistory, *r)
 }
 
 func bail(status int, t string, args ...interface{}) {
@@ -55,21 +69,28 @@ func bail(status int, t string, args ...interface{}) {
 	os.Exit(status)
 }
 
-func main() {
-	var configPath string
-	flag.StringVar(&configPath, "config", "./prox_config.moon", "path to configuration file")
-	flag.Parse()
-
-	conf, err := moon.ReadFile(configPath)
-	if err != nil {
-		bail(1, "unable to read config: %s", err)
-	}
-
+func proxyListener() {
 	var addr string
 	if err := conf.Get("proxy_addr", &addr); err != nil {
 		bail(1, "error reading proxy_addr from config: %s", err)
 	}
 
-	http.HandleFunc("/", httpHandler)
-	http.ListenAndServe(addr, nil)
+	m := http.NewServeMux()
+	m.HandleFunc("/", httpHandler)
+	http.ListenAndServe(addr, m)
+}
+
+func main() {
+	var configPath string
+	flag.StringVar(&configPath, "config", "./prox_config.moon", "path to configuration file")
+	flag.Parse()
+
+	var err error
+	conf, err = moon.ReadFile(configPath)
+	if err != nil {
+		bail(1, "unable to read config: %s", err)
+	}
+
+	go appServer()
+	proxyListener()
 }
