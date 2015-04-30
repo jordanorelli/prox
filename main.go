@@ -68,7 +68,8 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 
 	r.RequestURI = requestURI
 	fmt.Printf("elapsed: %v (%v)\n", elapsed, elapsed.Nanoseconds()/1000000)
-	saveRequest(id, r, elapsed)
+	saveRequest(id, r)
+	saveResponse(id, res, elapsed)
 }
 
 func bail(status int, t string, args ...interface{}) {

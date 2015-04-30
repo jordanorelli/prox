@@ -56,8 +56,15 @@ func setupDB() {
     create table if not exists requests (
         id       text primary key,
         host     text not null,
-        path     text not null,
-        duration integer           -- time taken in milliseconds
+        path     text not null
+    );
+
+    create table if not exists responses (
+        id           text primary key,
+        status       integer,
+        length       integer,          -- content-length header
+        content_type text,             -- content-type header
+        duration     integer           -- time taken in milliseconds
     );
     `
 	res, err := db.Exec(sql)
@@ -79,11 +86,20 @@ func saveHostname(hostname string) {
 	}
 }
 
-func saveRequest(id RequestId, r *http.Request, elapsed time.Duration) {
-	_, err := db.Exec(`insert or ignore into requests (id, host, path, duration)
-    values (?, ?, ?, ?)`, id.String(), r.URL.Host, r.URL.Path, elapsed.Nanoseconds()/1000000)
+func saveRequest(id RequestId, r *http.Request) {
+	_, err := db.Exec(`insert into requests (id, host, path)
+    values (?, ?, ?)`, id.String(), r.URL.Host, r.URL.Path)
 	if err != nil {
 		log.Printf("unable to save request: %v", err)
+		return
+	}
+}
+
+func saveResponse(id RequestId, res *http.Response, elapsed time.Duration) {
+	_, err := db.Exec(`insert into responses (id, status, length, content_type, duration)
+    values (?, ?, ?, ?, ?)`, id.String(), res.StatusCode, res.ContentLength, res.Header.Get("Content-Type"), elapsed.Nanoseconds()/1000000)
+	if err != nil {
+		log.Printf("unable to save response: %v", err)
 		return
 	}
 }
