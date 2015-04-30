@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jordanorelli/moon/lib"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -18,6 +19,7 @@ var (
 )
 
 func httpHandler(w http.ResponseWriter, r *http.Request) {
+	id := newRequestId()
 	fmt.Println("from:", r.RemoteAddr)
 	if err := freezeRequest(r); err != nil {
 		fmt.Printf("error freezing request: %s\n", err)
@@ -53,11 +55,8 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("error copying body: %s\n", err)
 	}
 
-	if requestHistory == nil {
-		requestHistory = make([]http.Request, 0, 100)
-	}
 	r.RequestURI = requestURI
-	requestHistory = append(requestHistory, *r)
+	saveRequest(id, r)
 }
 
 func bail(status int, t string, args ...interface{}) {
@@ -85,11 +84,17 @@ func main() {
 	flag.StringVar(&configPath, "config", "./prox_config.moon", "path to configuration file")
 	flag.Parse()
 
+	log.Printf("reading config from %s", configPath)
 	var err error
 	conf, err = moon.ReadFile(configPath)
 	if err != nil {
 		bail(1, "unable to read config: %s", err)
 	}
+
+	if err := openDB(); err != nil {
+		bail(1, "unable to open db: %s", err)
+	}
+	defer db.Close()
 
 	go appServer()
 	proxyListener()
