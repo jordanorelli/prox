@@ -10,6 +10,7 @@ import (
 	"net/http/httputil"
 	"os"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -20,6 +21,7 @@ var (
 
 func httpHandler(w http.ResponseWriter, r *http.Request) {
 	id := newRequestId()
+	fmt.Printf("%s >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", id.String())
 	fmt.Println("from:", r.RemoteAddr)
 	if err := freezeRequest(r); err != nil {
 		fmt.Printf("error freezing request: %s\n", err)
@@ -36,12 +38,20 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	r.RequestURI = ""
 	r.URL.Scheme = strings.Map(unicode.ToLower, r.URL.Scheme)
 
+	start := time.Now()
 	res, err := client.Do(r)
 	if err != nil {
 		fmt.Printf("error forwarding request: %s\n", err)
 		return
 	}
 	defer res.Body.Close()
+
+	fmt.Printf("%s <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", id.String())
+	resb, err := httputil.DumpResponse(res, false)
+	if err != nil {
+		fmt.Printf("fuuuuuuuuuck")
+	}
+	os.Stdout.Write(resb)
 
 	for k, v := range res.Header {
 		w.Header()[k] = v
@@ -54,9 +64,11 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	if _, err := io.Copy(w, res.Body); err != nil {
 		fmt.Printf("error copying body: %s\n", err)
 	}
+	elapsed := time.Since(start)
 
 	r.RequestURI = requestURI
-	saveRequest(id, r)
+	fmt.Printf("elapsed: %v (%v)\n", elapsed, elapsed.Nanoseconds()/1000000)
+	saveRequest(id, r, elapsed)
 }
 
 func bail(status int, t string, args ...interface{}) {

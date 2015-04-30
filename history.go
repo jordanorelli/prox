@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 )
 
 var lastId int
@@ -49,13 +50,14 @@ func setupDB() {
 	sql := `
     create table if not exists domains (
         hostname text primary key,
-        blocked integer not null default 0
+        blocked  integer not null default 0
     );
 
     create table if not exists requests (
-        id text primary key,
-        host text not null,
-        path text not null
+        id       text primary key,
+        host     text not null,
+        path     text not null,
+        duration integer           -- time taken in milliseconds
     );
     `
 	res, err := db.Exec(sql)
@@ -77,9 +79,9 @@ func saveHostname(hostname string) {
 	}
 }
 
-func saveRequest(id RequestId, r *http.Request) {
-	_, err := db.Exec(`insert or ignore into requests (id, host, path)
-    values (?, ?, ?)`, id.String(), r.URL.Host, r.URL.Path)
+func saveRequest(id RequestId, r *http.Request, elapsed time.Duration) {
+	_, err := db.Exec(`insert or ignore into requests (id, host, path, duration)
+    values (?, ?, ?, ?)`, id.String(), r.URL.Host, r.URL.Path, elapsed.Nanoseconds()/1000000)
 	if err != nil {
 		log.Printf("unable to save request: %v", err)
 		return
