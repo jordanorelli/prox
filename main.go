@@ -18,22 +18,22 @@ var (
 
 var config struct {
 	ProxyAddr string `
-    name: proxy_addr
-    default: ":8080"
-    help: proxy address. Browsers send their http traffic to this port.
-    `
+	name: proxy_addr
+	default: ":8080"
+	help: proxy address. Browsers send their http traffic to this port.
+	`
 
 	AppAddr string `
-    name: app_addr
-    default: ":9000"
-    help: app address. Users visit this address to view the proxy's history db
-    `
+	name: app_addr
+	default: ":9000"
+	help: app address. Users visit this address to view the proxy's history db
+	`
 
 	DbPath string `
-    name: dbpath
-    default: history.db
-    help: path to a sqlite file used for storing the user's history
-    `
+	name: dbpath
+	default: history.db
+	help: path to a sqlite file used for storing the user's history
+	`
 }
 
 func httpHandler(w http.ResponseWriter, r *http.Request) {
