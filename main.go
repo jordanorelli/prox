@@ -1,11 +1,9 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"github.com/jordanorelli/moon/lib"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -16,8 +14,27 @@ import (
 
 var (
 	client = new(http.Client)
-	conf   *moon.Doc
 )
+
+var config struct {
+	ProxyAddr string `
+    name: proxy_addr
+    default: ":8080"
+    help: proxy address. Browsers send their http traffic to this port.
+    `
+
+	AppAddr string `
+    name: app_addr
+    default: ":9000"
+    help: app address. Users visit this address to view the proxy's history db
+    `
+
+	DbPath string `
+    name: dbpath
+    default: history.db
+    help: path to a sqlite file used for storing the user's history
+    `
+}
 
 func httpHandler(w http.ResponseWriter, r *http.Request) {
 	id := newRequestId()
@@ -82,27 +99,13 @@ func bail(status int, t string, args ...interface{}) {
 }
 
 func proxyListener() {
-	var addr string
-	if err := conf.Get("proxy_addr", &addr); err != nil {
-		bail(1, "error reading proxy_addr from config: %s", err)
-	}
-
 	m := http.NewServeMux()
 	m.HandleFunc("/", httpHandler)
-	http.ListenAndServe(addr, m)
+	http.ListenAndServe(config.ProxyAddr, m)
 }
 
 func main() {
-	var configPath string
-	flag.StringVar(&configPath, "config", "./prox_config.moon", "path to configuration file")
-	flag.Parse()
-
-	log.Printf("reading config from %s", configPath)
-	var err error
-	conf, err = moon.ReadFile(configPath)
-	if err != nil {
-		bail(1, "unable to read config: %s", err)
-	}
+	moon.Parse(&config)
 
 	if err := openDB(); err != nil {
 		bail(1, "unable to open db: %s", err)

@@ -28,16 +28,10 @@ func freezeRequest(r *http.Request) error {
 }
 
 func openDB() error {
-	var dbpath string
 	var err error
 
-	err = conf.Get("dbpath", &dbpath)
-	if err != nil {
-		return err
-	}
-	log.Printf("opening sqlite file at %s", dbpath)
-
-	db, err = sql.Open("sqlite3", dbpath)
+	log.Printf("opening sqlite file at %s", config.DbPath)
+	db, err = sql.Open("sqlite3", config.DbPath)
 	if err != nil {
 		return err
 	}

@@ -6,4 +6,4 @@ proxy_addr: ":8080"
 # prox history.
 app_addr: ":9000"
 
-dbpath: "history.db"
+dbpath: "fart_history.db"
