@@ -34,6 +34,12 @@ var config struct {
 	default: history.db
 	help: path to a sqlite file used for storing the user's history
 	`
+
+	Timeout time.Duration `
+	name: timeout
+	default: 30s
+	help: useless timeout value for testing durations
+	`
 }
 
 func httpHandler(w http.ResponseWriter, r *http.Request) {
